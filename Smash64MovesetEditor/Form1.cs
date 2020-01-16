@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,11 +26,29 @@ namespace Smash64MovesetEditor
 
         }
 
-        private void HexCodeButton_click(object sender, EventArgs e)
-        {
 
+        private async void CodeHexButton_Click(object sender, EventArgs e)
+        {
+            OutputBox.Text = String.Format("{0:X}\n", await ConvertCodeToHex(InputBox.Text));
         }
 
+        private async void HexCodeButton_click(object sender, EventArgs e)
+        {
+            //Convert input box to byte array
+            List<byte> bytes = new List<byte>();
+            for (int i = 0; i < InputBox.Text.Length - 1; i += 2)
+            {
+                bytes.Add(Convert.ToByte($"{InputBox.Text[i]}{InputBox.Text[i + 1]}", 16));
+            }
+
+            OutputBox.AppendText(await ConvertHexToCode(bytes.ToArray()));
+        }
+
+        /// <summary>
+        /// Convert code to hexadecimal
+        /// </summary>
+        /// <param name="input">Input</param>
+        /// <returns></returns>
         public Task<string> ConvertCodeToHex(string input)
         {
             string[] commands = input.Split('\n');
@@ -169,9 +188,143 @@ namespace Smash64MovesetEditor
             return Task.FromResult(String.Format(output));
         }
 
-        private async void CodeHexButton_Click(object sender, EventArgs e)
+
+        /// <summary>
+        /// Converts hexadecimal data into code
+        /// </summary>
+        /// <param name="input">Input in bytes</param>
+        /// <returns></returns>
+        public Task<string> ConvertHexToCode(byte[] input)
         {
-            OutputBox.Text = String.Format("{0:X}\n", await ConvertCodeToHex(InputBox.Text));
+            string output = "";
+
+            for (int i = 0; i < input.Length; i++)
+            { 
+                switch (input[i])
+                {
+                    case 0x0D:
+                    case 0x0C: //Hitbox
+                        output += "Hitbox ";
+                        
+                        byte[] bytes = new byte[20];
+                        int count = i + 19;
+                        int index = 0;
+                        for (; i < count; i++)
+                        {
+                            bytes[index] = input[i];
+                            index++;
+                        }
+
+                        int ID = ((bytes[1] >> 4) + (bytes[0] << 4) - 0xC0) / 8;
+
+                        int damage = ((bytes[3] >> 4) + ((bytes[2] << 4) & 0xFF)) / 2;
+                        int BKB = ((bytes[19] >> 4) + (bytes[18] << 4)) / 8;
+                        int FKB = (bytes[15] + ((bytes[14] << 8) & 0xFFF)) / 4;
+                        int KBS = ((bytes[14] >> 4) & 0xF) + ((bytes[13] << 4) & 0xFF);
+                        int angle = ((bytes[12] << 4) + (bytes[13] >> 4)) / 4;
+                        int bone = (((bytes[1] << 4) & 0xFF) + (bytes[2] >> 4)) / 2;
+
+                        int x = bytes[7] + (bytes[6] << 8);
+                        int y = bytes[9] + (bytes[8] << 8);
+                        int z = bytes[11] + (bytes[10] << 8);
+
+                        int AT = bytes[15] & 1;
+                        int GT = (bytes[15] >> 1) & 1;
+                        int SD = bytes[16];
+                        int clang = (bytes[3] >> 4) & 1;
+                        int size = bytes[5] / 2;
+
+                        int effect = bytes[3] & 0xF;
+                        int soundType = (bytes[17] & 0xF) / 2;
+                        int soundLevel = (bytes[17] >> 4) / 2;
+
+                        output += $"{ID} {damage} {BKB} {FKB} {KBS} {angle} {bone} {x} {y} {z} {GT} {AT} {SD} {clang} {size} {effect} {soundType} {soundLevel}" + Environment.NewLine;
+
+                        break;
+                    case 0x18: //End hitbox
+                        output += "EndHitboxes" + Environment.NewLine;
+                        break;
+                    case 0x2C: //Revive hitbox
+                        int main = input[i += 3];
+                        output += $"ReviveHitbox {main}" + Environment.NewLine;
+                        break;
+                    case 0x04: //Wait
+                        main = input[i += 3];
+                        output += $"Wait {main}" + Environment.NewLine;
+                        break;
+                    case 0x08: //After
+                        main = input[i += 3];
+                        output += $"After {main}" + Environment.NewLine;
+                        break;
+                    case 0x38: //SFX [14]
+                        main = input[i += 3];
+                        output += $"SFX14 {main}" + Environment.NewLine;
+                        break;
+                    case 0x4C: //SFX [19]
+                        main = input[i += 3];
+                        output += $"SFX19 {main}" + Environment.NewLine;
+                        break;
+                    case 0x50: //Generic Voice FX
+                        output += "GenericVoice" + Environment.NewLine;
+                        break;
+                    case 0x44: //Voice FX
+                        main = input[i += 3];
+                        output += $"Voice {main}" + Environment.NewLine;
+                        break;
+                    case 0x80: //BeginLoop
+                        main = input[i += 3];
+                        output += $"BeginLoop {main}" + Environment.NewLine;
+                        break;
+                    case 0x84: //End loop
+                        output += "EndLoop" + Environment.NewLine;
+                        break;
+                    case 0x58: //Set flag
+                        main = input[i += 3];
+                        output += $"SetFlag {main}" + Environment.NewLine;
+                        break;
+                    case 0x74: //SetHurtboxState
+                        main = input[i += 3];
+                        output += $"SetHurtboxState {main}" + Environment.NewLine;
+                        break;
+                    case 0x6C: //ResetHurtboxState
+                        main = input[i += 3];
+                        output += $"ResetHurtboxState {main}" + Environment.NewLine;
+                        break;
+                    case 0xAC: //SetTextureForm
+                        main = input[i += 3];
+                        output += $"SetTextureForm {main}" + Environment.NewLine;
+                        break;
+                    case 0xBC: //SetSlopeContourState
+                        main = input[i += 3];
+                        output += $"SetSlopeCountourState {main}" + Environment.NewLine;
+                        break;
+                    case 0x5C: //ApplyThrow
+                        main = input[i += 3];
+                        output += $"ApplyThrow {main}" + Environment.NewLine;
+                        break;
+                    case 0x30: //ThrowData
+                        main = input[i += 3];
+                        output += $"ThrowData {main}" + Environment.NewLine;
+                        break;
+                    case 0x54: //CreateProp
+                        main = input[i += 3];
+                        output += $"CreateProp {main}" + Environment.NewLine;
+                        break;
+                    case 0x90: //Goto
+                        main = input[i += 3];
+                        output += $"Goto {main}" + Environment.NewLine;
+                        break;
+                    case 0x8C: //Return
+                        output += "Return" + Environment.NewLine;
+                        break;
+                    case 0x88: //Subrotinue
+                        main = input[i += 3];
+                        output += $"Subroutine {main}" + Environment.NewLine;
+                        break;
+                }
+            }
+
+            return Task.FromResult(output);
         }
 
         private void label1_Click(object sender, EventArgs e)
@@ -220,10 +373,9 @@ namespace Smash64MovesetEditor
             }
         }
 
-        /*
-        public string ConvertHexToCode(byte[] input)
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            
-        }*/
+
+        }
     }
 }

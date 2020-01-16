@@ -24,7 +24,7 @@
         #region Windows Form Designer generated code
 
         /// <summary>
-        /// Required method for Designer support - do not modify
+        /// Requethod for Designer support - do
         /// the contents of this method with the code editor.
         /// </summary>
         private void InitializeComponent()
@@ -122,15 +122,15 @@
             // openToolStripMenuItem
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
-            this.openToolStripMenuItem.Text = "Open             Ctrl + O";
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.openToolStripMenuItem.Text = "Import              Ctrl + I";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
             // 
             // saveToolStripMenuItem
             // 
             this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
-            this.saveToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
-            this.saveToolStripMenuItem.Text = "Save               Crtl + S";
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(191, 22);
+            this.saveToolStripMenuItem.Text = "Export               Crtl + E";
             // 
             // fileSystemWatcher1
             // 

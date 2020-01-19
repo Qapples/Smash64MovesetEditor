@@ -19,6 +19,7 @@ namespace Smash64MovesetEditor
         {
             InitializeComponent();
             openFileDialog1.Filter = "Text Files|*.txt|BIN files|*.bin";
+            saveFileDialog1.Filter = "Text Files|*.txt|BIN files|*.bin";
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -338,44 +339,71 @@ namespace Smash64MovesetEditor
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
                 //Open the file and read it
-                Stream stream = openFileDialog1.OpenFile();
-                byte[] bytes = new byte[stream.Length];
+                using (Stream stream = openFileDialog1.OpenFile())
+                {
+                    byte[] bytes = new byte[stream.Length];
 
-                for (int i = 0; i < stream.Length; i++)
-                {
-                    await stream.ReadAsync(bytes, 0, (int)stream.Length);
-                }
-
-                if (openFileDialog1.FileName.Contains(".txt"))
-                {
-                    InputBox.Text = Encoding.ASCII.GetString(bytes);
-                }
-                else
-                {
-                    string output = "";
-                    for (int i = 0; i < bytes.Length; i++)
+                    for (int i = 0; i < stream.Length; i++)
                     {
-                        //Every four bytes, make a space. Make a new line every 16 bytes
-                        if (i % 4 == 0)
-                        {
-                            output += " ";
-                        }
-                        if (i % 16 == 0)
-                        {
-                            output += Environment.NewLine;
-                        }
-
-                        output += $"{bytes[i]:X2}";
+                        await stream.ReadAsync(bytes, 0, (int) stream.Length);
                     }
 
-                    InputBox.AppendText(output);
+                    if (openFileDialog1.FileName.Contains(".txt"))
+                    {
+                        InputBox.Text = Encoding.ASCII.GetString(bytes);
+                    }
+                    else
+                    {
+                        string output = "";
+                        for (int i = 0; i < bytes.Length; i++)
+                        {
+                            //Every four bytes, make a space. Make a new line every 16 bytes
+                            if (i % 4 == 0)
+                            {
+                                output += " ";
+                            }
+
+                            if (i % 16 == 0)
+                            {
+                                output += Environment.NewLine;
+                            }
+
+                            output += $"{bytes[i]:X2}";
+                        }
+
+                        InputBox.AppendText(output);
+                    }
                 }
             }
         }
 
-        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                //Save as txt file.
+                if (saveFileDialog1.FileName.Contains(".txt"))
+                {
+                    using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
+                    {
+                        await writer.WriteAsync(OutputBox.Text);
+                        await writer.FlushAsync();
+                    }
+                }
+                //Save as .bin file
+                else if (saveFileDialog1.FileName.Contains(".bin"))
+                {
+                    using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
+                    {
+                        for (int i = 0; i < OutputBox.TextLength - 1; i += 2)
+                        {
+                            await writer.WriteAsync((char)Convert.ToByte($"{OutputBox.Text[i]}{OutputBox.Text[i + 1]}", 16));
+                        }
 
+                        await writer.FlushAsync();
+                    }
+                }
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 Welcome to the Smash 64 Moveset Editor from Qapples.
 
-It converts human readable markup code into hex data that can be patched into your Ssb64 game rom. In addition, it will also convert hex data into human readable code (although this will come at a later date)
+It converts human readable markup code into hex data that can be patched into your Ssb64 game rom. In addition, it will also convert hex data into human readable code
 
 The markup code is formatted as such:
 (OPCODE) (PARAMTERS)

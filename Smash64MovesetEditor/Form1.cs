@@ -10,27 +10,37 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 
 namespace Smash64MovesetEditor
 {
     public partial class Form1 : Form
     {
+
+        string[] data;
+
         public Form1()
         {
             InitializeComponent();
             openFileDialog1.Filter = "Text Files|*.txt|BIN files|*.bin";
             saveFileDialog1.Filter = "Text Files|*.txt|BIN files|*.bin";
+            data = new string[]
+            {
+                ActionIdBox.Text, DamageThrowDataBox.Text, AngleThrowDataBox.Text, KBSThrowDataBox.Text,
+                FKBThrowDataBox.Text, BKBThrowDataBox.Text, DamageEffectThrowBox.Text, DamageReleaseDataBox.Text,
+                AngleReleaseDataBox.Text, KBSReleaseDataBox.Text, FKBReleaseDataBox.Text, BKBReleaseDataBox.Text,
+                DamageEffectReleaseBox.Text
+            };
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-
         }
 
 
         private async void CodeHexButton_Click(object sender, EventArgs e)
         {
-            OutputBox.Text = String.Format("{0:X}\n", await ConvertCodeToHex(InputBox.Text));
+            OutputBox.Text = $"{await ConvertCodeToHex(InputBox.Text):X}\n";
         }
 
         private async void HexCodeButton_click(object sender, EventArgs e)
@@ -63,26 +73,25 @@ namespace Smash64MovesetEditor
                 string opcode = splitCmd[0];
 
                 uint[] parameters = splitCmd.Select(e => uint.TryParse(e, out _) ? uint.Parse(e) : 0).ToArray();
-                uint hex;
 
                 switch (opcode)
                 {
                     case "Hitbox":
                         //HITBOX parameters in order: ID#1 DMG BKB FKB KBS Angle Bone X Y Z GT AT SD Clang Size Effect SoundType SoundLevel
-                        hex = (0xC000000 | (parameters[1] * 0x800000)); //ID 1
-                        hex = hex | (parameters[7] << 13); //Bone
-                        hex = hex | (parameters[2] << 5); //Damage
-                        hex = hex | (parameters[14] << 4); //Clang
+                        var hex = (0xC000000 | (parameters[1] * 0x800000));
+                        hex |= (parameters[7] << 13); //Bone
+                        hex |= (parameters[2] << 5); //Damage
+                        hex |= (parameters[14] << 4); //Clang
                         parameters[16] = parameters[16] == 5 ? 7 : parameters[16]; //Effect. Change 5 into 7
                         hex += parameters[16]; //add effect
                         output = $"{hex:X8} ";
 
                         hex = 0 | (parameters[15] << 17); //Size
-                        hex = hex | (parameters[8] & 0xFFFF); //X Position
+                        hex |= (parameters[8] & 0xFFFF); //X Position
                         output += $"{hex:X8} ";
 
                         hex = (parameters[9] << 16) & 0xFFFF0000; //Y Position
-                        hex = hex | (parameters[10] & 0xFFFF); //Z position
+                        hex |= (parameters[10] & 0xFFFF); //Z position
                         output += $"{hex:X8} ";
 
                         hex = parameters[6] << 22; //Angle
@@ -95,7 +104,7 @@ namespace Smash64MovesetEditor
                         hex = parameters[13] << 24; //Sheild Damage
                         hex += (parameters[17] * 2) << 20; //Sound level
                         hex += (parameters[18] * 2) << 16; //Sound type
-                        hex += parameters[3] << 7;
+                        hex += parameters[3] << 7; //Base Knockbck
                         output += $"{hex:X8} ";
                         break;
                     case "EndHitboxes":
@@ -182,7 +191,6 @@ namespace Smash64MovesetEditor
                         //Paramters: Main
                         output += $"{0x88000000 + parameters[1]:X8}";
                         break;
-
                 }
             }
 
@@ -200,13 +208,13 @@ namespace Smash64MovesetEditor
             string output = "";
 
             for (int i = 0; i < input.Length; i++)
-            { 
+            {
                 switch (input[i])
                 {
                     case 0x0D:
                     case 0x0C: //Hitbox
                         output += "Hitbox ";
-                        
+
                         byte[] bytes = new byte[20];
                         int count = i + 19;
                         int index = 0;
@@ -239,7 +247,9 @@ namespace Smash64MovesetEditor
                         int soundType = (bytes[17] & 0xF) / 2;
                         int soundLevel = (bytes[17] >> 4) / 2;
 
-                        output += $"{ID} {damage} {BKB} {FKB} {KBS} {angle} {bone} {x} {y} {z} {GT} {AT} {SD} {clang} {size} {effect} {soundType} {soundLevel}" + Environment.NewLine;
+                        output +=
+                            $"{ID} {damage} {BKB} {FKB} {KBS} {angle} {bone} {x} {y} {z} {GT} {AT} {SD} {clang} {size} {effect} {soundType} {soundLevel}" +
+                            Environment.NewLine;
 
                         break;
                     case 0x18: //End hitbox
@@ -330,80 +340,159 @@ namespace Smash64MovesetEditor
 
         private void label1_Click(object sender, EventArgs e)
         {
-
         }
 
-        private async void openToolStripMenuItem_Click(object sender, EventArgs e)
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //Open the openfile dialog
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            if (openFileDialog1.ShowDialog() != DialogResult.OK) return;
+
+            byte[] bytes = File.ReadAllBytes(openFileDialog1.FileName);
+
+
+            if (openFileDialog1.FileName.Contains(".txt"))
             {
-                //Open the file and read it
-                using (Stream stream = openFileDialog1.OpenFile())
+                InputBox.Text = Encoding.ASCII.GetString(bytes);
+            }
+            else
+            {
+                if (MovesetTab.Visible)
                 {
-                    byte[] bytes = new byte[stream.Length];
-
-                    for (int i = 0; i < stream.Length; i++)
+                    string output = "";
+                    for (int i = 0; i < bytes.Length; i++)
                     {
-                        await stream.ReadAsync(bytes, 0, (int) stream.Length);
+                        output += $"{bytes[i]:X2}";
                     }
 
-                    if (openFileDialog1.FileName.Contains(".txt"))
+                    InputBox.AppendText(output);
+                }
+                else
+                {
+                    int value = 0;
+                    int multiplicity = 3;
+                    int index = 0;
+                    int[] values = new int[13];
+
+                    for (int i = 0; i < bytes.Length; i++)
                     {
-                        InputBox.Text = Encoding.ASCII.GetString(bytes);
-                    }
-                    else
-                    {
-                        string output = "";
-                        for (int i = 0; i < bytes.Length; i++)
+                        //Skip the rows of F
+                        if (i == 0x1C)
                         {
-                            //Every four bytes, make a space. Make a new line every 16 bytes
-                            if (i % 4 == 0)
-                            {
-                                output += " ";
-                            }
-
-                            if (i % 16 == 0)
-                            {
-                                output += Environment.NewLine;
-                            }
-
-                            output += $"{bytes[i]:X2}";
+                            i = 0x20;
                         }
 
-                        InputBox.AppendText(output);
+                        if (multiplicity == -1)
+                        {
+                            values[index] = value;
+                            value = 0;
+                            index++;
+                            multiplicity = 3;
+                        }
+
+                        value +=  bytes[i] << (multiplicity * 8);
+                        multiplicity--;
+
                     }
+
+                    string[] valueStrings = values.Select(s => s.ToString()).ToArray();
+
+                    //There's probably a better way of doing this
+                    (ActionIdBox.Text, DamageThrowDataBox.Text, AngleThrowDataBox.Text, KBSThrowDataBox.Text,
+                        FKBThrowDataBox.Text,
+                        BKBThrowDataBox.Text, DamageEffectThrowBox.Text, DamageReleaseDataBox.Text,
+                        AngleReleaseDataBox.Text, KBSReleaseDataBox.Text,
+                        FKBReleaseDataBox.Text, BKBReleaseDataBox.Text, DamageEffectReleaseBox.Text) = (valueStrings[0],
+                        valueStrings[1], valueStrings[2], valueStrings[3], valueStrings[4], valueStrings[5],
+                        valueStrings[6], valueStrings[7], valueStrings[8], valueStrings[9], valueStrings[10],
+                        valueStrings[11], valueStrings[12]);
                 }
             }
         }
 
         private async void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                //Save as txt file.
-                if (saveFileDialog1.FileName.Contains(".txt"))
-                {
-                    using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
-                    {
-                        await writer.WriteAsync(OutputBox.Text);
-                        await writer.FlushAsync();
-                    }
-                }
-                //Save as .bin file
-                else if (saveFileDialog1.FileName.Contains(".bin"))
-                {
-                    using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
-                    {
-                        for (int i = 0; i < OutputBox.TextLength - 1; i += 2)
-                        {
-                            await writer.WriteAsync((char)Convert.ToByte($"{OutputBox.Text[i]}{OutputBox.Text[i + 1]}", 16));
-                        }
+            if (saveFileDialog1.ShowDialog() != DialogResult.OK) return;
 
-                        await writer.FlushAsync();
-                    }
+            //Save as txt file.
+            if (saveFileDialog1.FileName.Contains(".txt"))
+            {
+                using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
+                {
+                    await writer.WriteAsync(OutputBox.Text);
+                    await writer.FlushAsync();
                 }
             }
+            //Save as .bin file
+            else if (saveFileDialog1.FileName.Contains(".bin"))
+            {
+                using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
+                {
+                    for (int i = 0; i < OutputBox.TextLength - 1; i += 2)
+                    {
+                        await writer.WriteAsync(
+                            (char) Convert.ToByte($"{OutputBox.Text[i]}{OutputBox.Text[i + 1]}", 16));
+                    }
+
+                    await writer.FlushAsync();
+                }
+            }
+        }
+
+        private void GenerateThrowDataButton_Click(object sender, EventArgs e)
+        {
+            byte[] bytes = new byte[56];
+            for (int i = 0x1C; i < 0x20; i++)
+            {
+                bytes[i] = 0xFF;
+            }
+
+            string[] data = new string[]
+            {
+                ActionIdBox.Text, DamageThrowDataBox.Text, AngleThrowDataBox.Text, KBSThrowDataBox.Text,
+                FKBThrowDataBox.Text, BKBThrowDataBox.Text, DamageEffectThrowBox.Text, DamageReleaseDataBox.Text,
+                AngleReleaseDataBox.Text, KBSReleaseDataBox.Text, FKBReleaseDataBox.Text, BKBReleaseDataBox.Text,
+                DamageEffectReleaseBox.Text
+            };
+
+            int stringIndex = 0;
+            for (int i = 3; i < bytes.Length; i += 4)
+            {
+                //Make sure the byte does not overflow
+                bool isFKB = stringIndex == 4 || stringIndex == 10;
+
+                //There is 4 bytes of FF's seperating throw data and grab release data.
+                //Change I so that it does not change the variables
+                if (i == 0x1F)
+                {
+                    i += 4;
+                }
+
+                int value;
+                if (int.TryParse(data[stringIndex], out value))
+                {
+                    if (isFKB)
+                        value *= 4;
+
+                    bytes[i] = (byte) (value & 0xFF);
+                    if (value > 0xFF)
+                    {
+                        bytes[i - 1] = (byte)(value >> 8);
+                    }
+                }
+                else if (stringIndex == 6 || stringIndex == 12)
+                {
+                    Effects enumValue;
+                    if (Enum.TryParse(data[stringIndex], true, out enumValue))
+                    {
+                        bytes[i] = (byte)enumValue;
+                    }
+                }
+
+
+                stringIndex++;
+            }
+
+            OutputBoxThrow.Text = BitConverter.ToString(bytes).Replace("-", string.Empty);
         }
     }
 }

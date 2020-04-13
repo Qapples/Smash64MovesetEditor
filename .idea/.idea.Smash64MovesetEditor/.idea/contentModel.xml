@@ -8,6 +8,7 @@
       <e p="Smash64MovesetEditor" t="IncludeRecursive">
         <e p="App.config" t="Include" />
         <e p="bin" t="ExcludeRecursive" />
+        <e p="Effects.cs" t="Include" />
         <e p="Form1.cs" t="Include" />
         <e p="Form1.Designer.cs" t="Include" />
         <e p="Form1.resx" t="Include" />

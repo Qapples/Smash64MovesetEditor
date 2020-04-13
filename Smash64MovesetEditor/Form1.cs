@@ -16,34 +16,24 @@ namespace Smash64MovesetEditor
 {
     public partial class Form1 : Form
     {
-
-        string[] data;
-
         public Form1()
         {
             InitializeComponent();
             openFileDialog1.Filter = "Text Files|*.txt|BIN files|*.bin";
             saveFileDialog1.Filter = "Text Files|*.txt|BIN files|*.bin";
-            data = new string[]
-            {
-                ActionIdBox.Text, DamageThrowDataBox.Text, AngleThrowDataBox.Text, KBSThrowDataBox.Text,
-                FKBThrowDataBox.Text, BKBThrowDataBox.Text, DamageEffectThrowBox.Text, DamageReleaseDataBox.Text,
-                AngleReleaseDataBox.Text, KBSReleaseDataBox.Text, FKBReleaseDataBox.Text, BKBReleaseDataBox.Text,
-                DamageEffectReleaseBox.Text
-            };
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        void Form1_Load(object sender, EventArgs e)
         {
         }
 
 
-        private async void CodeHexButton_Click(object sender, EventArgs e)
+        async void CodeHexButton_Click(object sender, EventArgs e)
         {
             OutputBox.Text = $"{await ConvertCodeToHex(InputBox.Text):X}\n";
         }
 
-        private async void HexCodeButton_click(object sender, EventArgs e)
+        async void HexCodeButton_click(object sender, EventArgs e)
         {
             //Convert input box to byte array
             List<byte> bytes = new List<byte>();
@@ -70,7 +60,7 @@ namespace Smash64MovesetEditor
                 //Split the command by spaces. The first element is the command. The next elements are the parameters. The first element of
                 //Parameters is -1.
                 string[] splitCmd = command.Split(' ');
-                string opcode = splitCmd[0];
+                string opcode = splitCmd[0].Trim();
 
                 uint[] parameters = splitCmd.Select(e => uint.TryParse(e, out _) ? uint.Parse(e) : 0).ToArray();
 
@@ -84,35 +74,40 @@ namespace Smash64MovesetEditor
                         hex |= (parameters[14] << 4); //Clang
                         parameters[16] = parameters[16] == 5 ? 7 : parameters[16]; //Effect. Change 5 into 7
                         hex += parameters[16]; //add effect
-                        output = $"{hex:X8} ";
+                        output += $"{hex:X8}";
 
                         hex = 0 | (parameters[15] << 17); //Size
                         hex |= (parameters[8] & 0xFFFF); //X Position
-                        output += $"{hex:X8} ";
+                        output += $"{hex:X8}";
 
                         hex = (parameters[9] << 16) & 0xFFFF0000; //Y Position
                         hex |= (parameters[10] & 0xFFFF); //Z position
-                        output += $"{hex:X8} ";
+                        output += $"{hex:X8}";
 
                         hex = parameters[6] << 22; //Angle
                         hex += parameters[5] << 12; //Knockback Scaling
                         hex += parameters[4] * 4; //Fixed knocback
                         hex += parameters[11] * 2; //Grounded targets
                         hex += parameters[12]; //Aerial targets
-                        output += $"{hex:X8} ";
+                        output += $"{hex:X8}";
 
-                        hex = parameters[13] << 24; //Sheild Damage
-                        hex += (parameters[17] * 2) << 20; //Sound level
-                        hex += (parameters[18] * 2) << 16; //Sound type
-                        hex += parameters[3] << 7; //Base Knockbck
-                        output += $"{hex:X8} ";
+                        hex = parameters[13] << 24; //Shield Damage
+                        hex += (parameters[18] * 2) << 20; //Sound level
+                        hex += (parameters[17] * 2) << 16; //Sound type
+
+                        int bkb = (int) parameters[3];
+                        if (bkb > 0)
+                            bkb++;
+
+                        hex += (uint) ((bkb * 8) << 4); //Base Knockback
+                        output += $"{hex:X8}";
                         break;
                     case "EndHitboxes":
                         //No parameters
                         output += $"{0x18000000:X8}";
                         break;
                     case "ReviveHitbox":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x2C000000 + parameters[1]:X8}";
                         break;
                     case "Wait":
@@ -120,15 +115,15 @@ namespace Smash64MovesetEditor
                         output += $"{0x04000000 + parameters[1]:X8}";
                         break;
                     case "After":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x08000000 + parameters[1]:X8}";
                         break;
                     case "SFX14":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x38000000 + parameters[1]:X8}";
                         break;
                     case "SFX19":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x4C000000 + parameters[1]:X8}";
                         break;
                     case "GenericVoice":
@@ -136,65 +131,69 @@ namespace Smash64MovesetEditor
                         output += $"{0x50000000:X8}";
                         break;
                     case "Voice":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x44000000 + parameters[1]:X8}";
                         break;
                     case "BeginLoop":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x80000000 + parameters[1]:X8}";
                         break;
                     case "EndLoop":
-                        //Paramaters: None
+                        //Parameters: None
                         output += $"{0x84000000:X8}";
                         break;
                     case "SetFlag":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x58000000 + parameters[1]:X8}";
                         break;
                     case "SetHurtboxState":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x74000000 + parameters[1]:X8}";
                         break;
                     case "ResetHurtboxState":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x6C000000 + parameters[1]:X8}";
                         break;
                     case "SetTextureForm":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0xAC000000 + parameters[1]:X8}";
                         break;
                     case "SetSlopeContourState":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0xBC000000 + parameters[1]:X8}";
                         break;
                     case "ApplyThrow":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x5C000000 + parameters[1]:X8}";
                         break;
                     case "ThrowData":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x30000000 + parameters[1]:X8}";
                         break;
                     case "CreateProp":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x54000000 + parameters[1]:X8}";
                         break;
                     case "Goto":
-                        //Paramaters: Main
+                        //Parameters: Main
                         output += $"{0x90000000 + parameters[1]:X8}";
                         break;
                     case "Return":
-                        //Paramaters: None
+                        //Parameters: None
                         output += $"{0x8C000000:X8}";
                         break;
                     case "Subroutine":
                         //Paramters: Main
                         output += $"{0x88000000 + parameters[1]:X8}";
                         break;
+                    case "End":
+                        //Parameters: None
+                        output += $"{0x00000000:X8}";
+                        break;
                 }
             }
 
-            return Task.FromResult(String.Format(output));
+            return Task.FromResult(output);
         }
 
 
@@ -206,7 +205,8 @@ namespace Smash64MovesetEditor
         public Task<string> ConvertHexToCode(byte[] input)
         {
             string output = "";
-
+            int main;
+            
             for (int i = 0; i < input.Length; i++)
             {
                 switch (input[i])
@@ -224,12 +224,12 @@ namespace Smash64MovesetEditor
                             index++;
                         }
 
-                        int ID = ((bytes[1] >> 4) + (bytes[0] << 4) - 0xC0) / 8;
+                        int id = ((bytes[1] >> 4) + (bytes[0] << 4) - 0xC0) / 8;
 
                         int damage = ((bytes[3] >> 4) + ((bytes[2] << 4) & 0xFF)) / 2;
-                        int BKB = ((bytes[19] >> 4) + (bytes[18] << 4)) / 8;
-                        int FKB = (bytes[15] + ((bytes[14] << 8) & 0xFFF)) / 4;
-                        int KBS = ((bytes[14] >> 4) & 0xF) + ((bytes[13] << 4) & 0xFF);
+                        int bkb = ((bytes[19] >> 4) + (bytes[18] << 4)) / 8;
+                        int fkb = (bytes[15] + ((bytes[14] << 8) & 0xFFF)) / 4;
+                        int kbs = ((bytes[14] >> 4) & 0xF) + ((bytes[13] << 4) & 0xFF);
                         int angle = ((bytes[12] << 4) + (bytes[13] >> 4)) / 4;
                         int bone = (((bytes[1] << 4) & 0xFF) + (bytes[2] >> 4)) / 2;
 
@@ -237,26 +237,27 @@ namespace Smash64MovesetEditor
                         int y = bytes[9] + (bytes[8] << 8);
                         int z = bytes[11] + (bytes[10] << 8);
 
-                        int AT = bytes[15] & 1;
-                        int GT = (bytes[15] >> 1) & 1;
-                        int SD = bytes[16];
+                        int at = bytes[15] & 1;
+                        int gt = (bytes[15] >> 1) & 1;
+                        int sd = bytes[16];
                         int clang = (bytes[3] >> 4) & 1;
-                        int size = bytes[5] / 2;
+                        int size = (bytes[5] + (bytes[4] << 8)) / 2;
 
                         int effect = bytes[3] & 0xF;
                         int soundType = (bytes[17] & 0xF) / 2;
                         int soundLevel = (bytes[17] >> 4) / 2;
 
                         output +=
-                            $"{ID} {damage} {BKB} {FKB} {KBS} {angle} {bone} {x} {y} {z} {GT} {AT} {SD} {clang} {size} {effect} {soundType} {soundLevel}" +
+                            $"{id} {damage} {bkb} {fkb} {kbs} {angle} {bone} {x} {y} {z} {gt} {at} {sd} {clang} {size} {effect} {soundType} {soundLevel}" +
                             Environment.NewLine;
 
                         break;
                     case 0x18: //End hitbox
+                        i += 4;
                         output += "EndHitboxes" + Environment.NewLine;
                         break;
                     case 0x2C: //Revive hitbox
-                        int main = input[i += 3];
+                        main = input[i += 3];
                         output += $"ReviveHitbox {main}" + Environment.NewLine;
                         break;
                     case 0x04: //Wait
@@ -287,6 +288,7 @@ namespace Smash64MovesetEditor
                         output += $"BeginLoop {main}" + Environment.NewLine;
                         break;
                     case 0x84: //End loop
+                        i += 4;
                         output += "EndLoop" + Environment.NewLine;
                         break;
                     case 0x58: //Set flag
@@ -307,7 +309,7 @@ namespace Smash64MovesetEditor
                         break;
                     case 0xBC: //SetSlopeContourState
                         main = input[i += 3];
-                        output += $"SetSlopeCountourState {main}" + Environment.NewLine;
+                        output += $"SetSlopeContourState {main}" + Environment.NewLine;
                         break;
                     case 0x5C: //ApplyThrow
                         main = input[i += 3];
@@ -326,11 +328,19 @@ namespace Smash64MovesetEditor
                         output += $"Goto {main}" + Environment.NewLine;
                         break;
                     case 0x8C: //Return
+                        i += 4;
                         output += "Return" + Environment.NewLine;
                         break;
                     case 0x88: //Subrotinue
                         main = input[i += 3];
                         output += $"Subroutine {main}" + Environment.NewLine;
+                        break;
+                    case 0x00: //End
+                        i += 4;
+                        output += $"End" + Environment.NewLine;
+                        break;
+                    default:
+                        i += 4;
                         break;
                 }
             }
@@ -358,11 +368,7 @@ namespace Smash64MovesetEditor
             {
                 if (MovesetTab.Visible)
                 {
-                    string output = "";
-                    for (int i = 0; i < bytes.Length; i++)
-                    {
-                        output += $"{bytes[i]:X2}";
-                    }
+                    string output = bytes.Aggregate("", (current, t) => current + $"{t:X2}");
 
                     InputBox.AppendText(output);
                 }
@@ -389,9 +395,8 @@ namespace Smash64MovesetEditor
                             multiplicity = 3;
                         }
 
-                        value +=  bytes[i] << (multiplicity * 8);
+                        value += bytes[i] << (multiplicity * 8);
                         multiplicity--;
-
                     }
 
                     string[] valueStrings = values.Select(s => s.ToString()).ToArray();
@@ -416,29 +421,23 @@ namespace Smash64MovesetEditor
             //Save as txt file.
             if (saveFileDialog1.FileName.Contains(".txt"))
             {
-                using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
-                {
-                    await writer.WriteAsync(OutputBox.Text);
-                    await writer.FlushAsync();
-                }
+                File.WriteAllText(saveFileDialog1.FileName, OutputBox.Text);
             }
             //Save as .bin file
             else if (saveFileDialog1.FileName.Contains(".bin"))
             {
-                using (StreamWriter writer = new StreamWriter(saveFileDialog1.FileName))
+                List<byte> writeBytes = new List<byte>();
+                for (int i = 0; i < OutputBox.TextLength - 1; i += 2)
                 {
-                    for (int i = 0; i < OutputBox.TextLength - 1; i += 2)
-                    {
-                        await writer.WriteAsync(
-                            (char) Convert.ToByte($"{OutputBox.Text[i]}{OutputBox.Text[i + 1]}", 16));
-                    }
-
-                    await writer.FlushAsync();
+                    writeBytes.Add(Convert.ToByte($"{OutputBox.Text[i]}{OutputBox.Text[i + 1]}", 16));
                 }
+
+                //writeBytes.AddRange(Enumerable.Repeat((byte) 0, 5));
+                File.WriteAllBytes(saveFileDialog1.FileName, writeBytes.ToArray());
             }
         }
 
-        private void GenerateThrowDataButton_Click(object sender, EventArgs e)
+        void GenerateThrowDataButton_Click(object sender, EventArgs e)
         {
             byte[] bytes = new byte[56];
             for (int i = 0x1C; i < 0x20; i++)
@@ -446,7 +445,7 @@ namespace Smash64MovesetEditor
                 bytes[i] = 0xFF;
             }
 
-            string[] data = new string[]
+            string[] data =
             {
                 ActionIdBox.Text, DamageThrowDataBox.Text, AngleThrowDataBox.Text, KBSThrowDataBox.Text,
                 FKBThrowDataBox.Text, BKBThrowDataBox.Text, DamageEffectThrowBox.Text, DamageReleaseDataBox.Text,
@@ -467,8 +466,7 @@ namespace Smash64MovesetEditor
                     i += 4;
                 }
 
-                int value;
-                if (int.TryParse(data[stringIndex], out value))
+                if (int.TryParse(data[stringIndex], out var value))
                 {
                     if (isFKB)
                         value *= 4;
@@ -476,15 +474,14 @@ namespace Smash64MovesetEditor
                     bytes[i] = (byte) (value & 0xFF);
                     if (value > 0xFF)
                     {
-                        bytes[i - 1] = (byte)(value >> 8);
+                        bytes[i - 1] = (byte) (value >> 8);
                     }
                 }
                 else if (stringIndex == 6 || stringIndex == 12)
                 {
-                    Effects enumValue;
-                    if (Enum.TryParse(data[stringIndex], true, out enumValue))
+                    if (Enum.TryParse(data[stringIndex], true, out Effects enumValue))
                     {
-                        bytes[i] = (byte)enumValue;
+                        bytes[i] = (byte) enumValue;
                     }
                 }
 
